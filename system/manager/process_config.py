@@ -11,7 +11,7 @@ from openpilot.system.manager.sunnylink import sunnylink_need_register, sunnylin
 WEBCAM = os.getenv("USE_WEBCAM") is not None
 
 def driverview(started: bool, params: Params, CP: car.CarParams) -> bool:
-  return started or params.get_bool("IsDriverViewEnabled")
+  return False #started or params.get_bool("IsDriverViewEnabled")
 
 def notcar(started: bool, params: Params, CP: car.CarParams) -> bool:
   return started and CP.notCar
@@ -38,6 +38,9 @@ def qcomgps(started, params, CP: car.CarParams) -> bool:
 def always_run(started, params, CP: car.CarParams) -> bool:
   return True
 
+def never_run(started, params, CP: car.CarParams) -> bool:
+  return False
+
 def only_onroad(started: bool, params, CP: car.CarParams) -> bool:
   return started
 
@@ -50,20 +53,20 @@ def model_use_nav(started, params, CP: car.CarParams) -> bool:
 
 def sunnylink_ready_shim(started, params, CP: car.CarParams) -> bool:
   """Shim for sunnylink_ready to match the process manager signature."""
-  return sunnylink_ready(params)
+  return False #sunnylink_ready(params)
 
 def sunnylink_need_register_shim(started, params, CP: car.CarParams) -> bool:
   """Shim for sunnylink_need_register to match the process manager signature."""
   return sunnylink_need_register(params)
 
 procs = [
-  DaemonProcess("manage_athenad", "system.athena.manage_athenad", "AthenadPid"),
+  # DaemonProcess("manage_athenad", "system.athena.manage_athenad", "AthenadPid"),
 
-  NativeProcess("camerad", "system/camerad", ["./camerad"], driverview),
+  NativeProcess("camerad", "system/camerad", ["./camerad"], only_onroad),
   NativeProcess("logcatd", "system/logcatd", ["./logcatd"], only_onroad),
   NativeProcess("proclogd", "system/proclogd", ["./proclogd"], only_onroad),
   PythonProcess("logmessaged", "system.logmessaged", always_run),
-  PythonProcess("micd", "system.micd", iscar),
+  PythonProcess("micd", "system.micd", never_run),
   PythonProcess("timed", "system.timed", always_run, enabled=not PC),
 
   PythonProcess("dmonitoringmodeld", "selfdrive.modeld.dmonitoringmodeld", driverview, enabled=(not PC or WEBCAM)),
@@ -75,7 +78,7 @@ procs = [
   PythonProcess("navmodeld", "selfdrive.modeld.navmodeld", model_use_nav),
   NativeProcess("sensord", "system/sensord", ["./sensord"], only_onroad, enabled=not PC),
   NativeProcess("ui", "selfdrive/ui", ["./ui"], always_run, watchdog_max_dt=(5 if not PC else None)),
-  PythonProcess("soundd", "selfdrive.ui.soundd", only_onroad),
+  PythonProcess("soundd", "selfdrive.ui.soundd", never_run),
   NativeProcess("locationd", "selfdrive/locationd", ["./locationd"], only_onroad),
   NativeProcess("pandad", "selfdrive/pandad", ["./pandad"], always_run, enabled=False),
   PythonProcess("calibrationd", "selfdrive.locationd.calibrationd", only_onroad),
@@ -100,8 +103,8 @@ procs = [
   PythonProcess("statsd", "system.statsd", always_run),
 
   # PFEIFER - MAPD {{
-  NativeProcess("mapd", COMMON_DIR, [MAPD_PATH], always_run, enabled=not PC),
-  PythonProcess("mapd_manager", "system.mapd_manager", always_run, enabled=not PC),
+  # NativeProcess("mapd", COMMON_DIR, [MAPD_PATH], always_run, enabled=not PC),
+  # PythonProcess("mapd_manager", "system.mapd_manager", always_run, enabled=not PC),
   # }} PFEIFER - MAPD
 
   PythonProcess("otisserv", "selfdrive.navd.otisserv", always_run),
@@ -112,15 +115,15 @@ procs = [
   PythonProcess("webrtcd", "system.webrtc.webrtcd", notcar),
   PythonProcess("webjoystick", "tools.bodyteleop.web", notcar),
 
-  # Sunnylink <3
-  DaemonProcess("manage_sunnylinkd", "system.athena.manage_sunnylinkd", "SunnylinkdPid"),
-  PythonProcess("sunnylink_registration", "system.manager.sunnylink", sunnylink_need_register_shim),
+  # # Sunnylink <3
+  # DaemonProcess("manage_sunnylinkd", "system.athena.manage_sunnylinkd", "SunnylinkdPid"),
+  # PythonProcess("sunnylink_registration", "system.manager.sunnylink", sunnylink_need_register_shim),
 ]
 
-if os.path.exists("../loggerd/sunnylink_uploader.py"):
-  procs += [
-    PythonProcess("sunnylink_uploader", "system.loggerd.sunnylink_uploader", sunnylink_ready_shim),
-  ]
+# if os.path.exists("../loggerd/sunnylink_uploader.py"):
+#   procs += [
+#     PythonProcess("sunnylink_uploader", "system.loggerd.sunnylink_uploader", sunnylink_ready_shim),
+#   ]
 
 if os.path.exists("./gitlab_runner.sh") and not PC:
   # Only devs!

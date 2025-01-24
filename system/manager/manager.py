@@ -106,7 +106,7 @@ def manager_init() -> None:
     ("OsmDownloadedDate", "0"),
     ("OSMDownloadProgress", "{}"),
     ("SidebarTemperatureOptions", "0"),
-    ("SunnylinkEnabled", "0" if (build_metadata.release_channel or build_metadata.release_sp_channel) else "1"),
+    ("SunnylinkEnabled", "0"),
     ("SunnylinkDongleId", f"{UNREGISTERED_SUNNYLINK_DONGLE_ID}"),
     ("CustomDrivingModel", "0"),
     ("DrivingModelGeneration", "4"),
@@ -115,8 +115,8 @@ def manager_init() -> None:
   if not PC:
     default_params.append(("LastUpdateTime", datetime.datetime.utcnow().isoformat().encode('utf8')))
 
-  if params.get_bool("RecordFrontLock"):
-    params.put_bool("RecordFront", True)
+  # if params.get_bool("RecordFrontLock"):
+  #   params.put_bool("RecordFront", True)
 
   # set unset params
   for k, v in default_params:
@@ -148,6 +148,13 @@ def manager_init() -> None:
   params.put_bool("IsReleaseBranch", build_metadata.release_channel)
   params.put_bool("IsReleaseSPBranch", build_metadata.release_sp_channel)
 
+  params.put_bool("RecordFrontLock", False)
+  params.put_bool("RecordFront", False)
+  params.put_bool("HandsOnWheelMonitoring", False)
+  params.put_bool("DriverCameraHardwareMissing", True)
+  params.put_bool("IsDriverViewEnabled", False)
+  params.put_bool("SunnylinkEnabled", False)
+  
   # set dongle id
   reg_res = register(show_spinner=True)
   if reg_res:
@@ -218,6 +225,8 @@ def manager_thread() -> None:
   ignore += [x for x in os.getenv("BLOCK", "").split(",") if len(x) > 0]
   if params.get("DriverCameraHardwareMissing") and not is_registered_device():
     ignore += ["dmonitoringd", "dmonitoringmodeld"]
+
+  ignore += ["dmonitoringd", "dmonitoringmodeld", "manage_athenad", "uploader"]
 
   sm = messaging.SubMaster(['deviceState', 'carParams'], poll='deviceState')
   pm = messaging.PubMaster(['managerState'])
