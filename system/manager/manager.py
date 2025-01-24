@@ -154,6 +154,7 @@ def manager_init() -> None:
   params.put_bool("DriverCameraHardwareMissing", True)
   params.put_bool("IsDriverViewEnabled", False)
   params.put_bool("SunnylinkEnabled", False)
+  params.put_bool("QuietDrive", True)  
   
   # set dongle id
   reg_res = register(show_spinner=True)
@@ -226,7 +227,7 @@ def manager_thread() -> None:
   if params.get("DriverCameraHardwareMissing") and not is_registered_device():
     ignore += ["dmonitoringd", "dmonitoringmodeld"]
 
-  ignore += ["dmonitoringd", "dmonitoringmodeld", "manage_athenad", "uploader"]
+  ignore += ["dmonitoringd", "dmonitoringmodeld", "manage_athenad", "uploader", "micd", "soundd"]
 
   sm = messaging.SubMaster(['deviceState', 'carParams'], poll='deviceState')
   pm = messaging.PubMaster(['managerState'])
