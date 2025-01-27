@@ -5,8 +5,22 @@ Route is a class for conveniently accessing all the [logs](/system/loggerd/) fro
 ```python
 from openpilot.tools.lib.route import Route
 from openpilot.tools.lib.logreader import LogReader
+import os
 
-r = Route("a2a0ccea32023010|2023-07-27--13-01-19")
+sep = '--'
+directories = set()
+for dir_name in os.listdir('/data/media/0/realdata'):
+  try:
+    split_dir_name = dir_name.split(sep)
+    directories.add(sep.join(dir_name.split(sep)[:-1]))
+  except:
+    pass
+
+directories = sorted(directories)
+print(directories)
+print(directories[-1])
+
+r = Route(directories[-1])
 
 # get a list of paths for the route's rlog files
 print(r.log_paths())
@@ -15,45 +29,112 @@ print(r.log_paths())
 print(r.camera_paths())
 
 # setup a LogReader to read the route's first rlog
-lr = LogReader(r.log_paths()[0])
+lr = LogReader(r.log_paths()[-1])
+
+# print all the events values from all the logs in the route
+from collections import defaultdict
+events = defaultdict(list)
+for msg in lr:
+  if msg.which() == "carState":
+    for event in msg.carState.events:
+      events[event.name].append(msg)
+      # if event.immediateDisable or event.softDisable:
+      #   events[event.name].append(event)
+
+print(list(events.keys()))
+
+for name, msg in events.items():
+  print(f'***************** {name}')
+  for m in msg:
+    print(m)
+    print()
+  print()
 
 # print out all the messages in the log
 import codecs
 codecs.register_error("strict", codecs.backslashreplace_errors)
 for msg in lr:
   print(msg)
-
-# setup a LogReader for the route's second qlog
-lr = LogReader(r.log_paths()[1])
+  print()
 
 # print all the steering angles values from the log
 for msg in lr:
   if msg.which() == "carState":
+    print(msg.carState)
+    print()
+
+# print all the steering angles values from the log
+for msg in lr:
+  if msg.which() == "carControl":
+    if msg.carControl.enabled:
+      print(msg.carControl)
+      print()
+
+```
+
+### MultiLogIterator
+
+`MultiLogIterator` is similar to `LogReader`, but reads multiple logs. 
+
+```python
+from openpilot.tools.lib.route import Route
+from openpilot.tools.lib.logreader import MultiLogIterator
+import os
+from tqdm import tqdm
+
+sep = '--'
+directories = set()
+for dir_name in os.listdir('/data/media/0/realdata'):
+  try:
+    split_dir_name = dir_name.split(sep)
+    directories.add(sep.join(dir_name.split(sep)[:-1]))
+  except:
+    pass
+
+directories = sorted(directories)
+print(directories)
+print(directories[-1])
+
+# setup a MultiLogIterator to read all the logs in the route
+r = Route(directories[-1])
+lr = [msg for msg in tqdm(MultiLogIterator(r.log_paths()))]
+
+sorted({msg.which() for msg in lr})
+
+msgs = sorted(lr, key=lambda m: m.logMonoTime)
+
+from queue import Queue
+q = Queue()
+for msg in msgs:
+  # if msg.which() == "errorLogMessage":
+  if q.full():
+    t = q.get()
+  if msg.which() in ['logMessage']:
+    q.put(msg)
+  if msg.logMonoTime == 741697858204:
+    break
+
+# Get items from the queue
+while not q.empty():
+    print(q.get())
+    print()
+
+
+# print all the events values from all the logs in the route
+import json
+for msg in lr:
+  if msg.which() == "logMessage":
+    log_msg = json.loads(msg.logMessage)
+    if log_msg.get('level', '') == 'ERROR':
+      print(log_msg)
+
+# print all the events values from all the logs in the route
+for msg in lr:
+  if msg.which() == "logMessage":
+    print(msg.logMessage)
+
+# print all the steering angles values from all the logs in the route
+for msg in lr:
+  if msg.which() == "carState":
     print(msg.carState.steeringAngleDeg)
-```
-
-### Segment Ranges
-
-We also support a new format called a "segment range":
-
-```
-344c5c15b34f2d8a   /   2024-01-03--09-37-12   /     2:6    /       q
-[   dongle id     ] [       timestamp        ] [ selector ]  [ query type]
-```
-
-you can specify which segments from a route to load
-
-```python
-lr = LogReader("a2a0ccea32023010|2023-07-27--13-01-19/4")   # 4th segment
-lr = LogReader("a2a0ccea32023010|2023-07-27--13-01-19/4:6") # 4th and 5th segment
-lr = LogReader("a2a0ccea32023010|2023-07-27--13-01-19/-1")  # last segment
-lr = LogReader("a2a0ccea32023010|2023-07-27--13-01-19/:5")  # first 5 segments
-lr = LogReader("a2a0ccea32023010|2023-07-27--13-01-19/1:")  # all except first segment
-```
-
-and can select which type of logs to grab
-
-```python
-lr = LogReader("a2a0ccea32023010|2023-07-27--13-01-19/4/q") # get qlogs
-lr = LogReader("a2a0ccea32023010|2023-07-27--13-01-19/4/r") # get rlogs (default)
 ```
