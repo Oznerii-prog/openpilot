@@ -137,4 +137,17 @@ for msg in lr:
 for msg in lr:
   if msg.which() == "carState":
     print(msg.carState.steeringAngleDeg)
+
+# print all the steering angles values from all the logs in the route
+data_points = []
+for msg in [msg for msg in tqdm(MultiLogIterator(r.log_paths()))]:
+  if msg.which() == "carState":
+    data_points.append({
+      'vehicle_speed': msg.carState.vEgo,
+      'wheel_speeds': msg.carState.wheelSpeeds.to_dict()
+      })
+import json
+with open("/data/media/0/realdata/tire_speed.json", "w") as out_file:
+  json.dump(data_points, out_file, indent = 4)
+
 ```
