@@ -5,11 +5,16 @@ import bz2
 import urllib.parse
 import capnp
 import warnings
-
+from collections.abc import Iterable
 
 from cereal import log as capnp_log
 from openpilot.tools.lib.filereader import FileReader
 from openpilot.tools.lib.route import Route, SegmentName
+
+
+LogMessage = type[capnp._DynamicStructReader]
+LogIterable = Iterable[LogMessage]
+RawLogIterable = Iterable[bytes]
 
 # this is an iterator itself, and uses private variables from LogReader
 class MultiLogIterator:
@@ -127,12 +132,12 @@ def logreader_from_route_or_segment(r, sort_by_time=False):
     return LogReader(route.log_paths()[sn.segment_num], sort_by_time=sort_by_time)
 
 
-if __name__ == "__main__":
-  import codecs
-  # capnproto <= 0.8.0 throws errors converting byte data to string
-  # below line catches those errors and replaces the bytes with \x__
-  codecs.register_error("strict", codecs.backslashreplace_errors)
-  log_path = sys.argv[1]
-  lr = LogReader(log_path, sort_by_time=True)
-  for msg in lr:
-    print(msg)
+# if __name__ == "__main__":
+#   import codecs
+#   # capnproto <= 0.8.0 throws errors converting byte data to string
+#   # below line catches those errors and replaces the bytes with \x__
+#   codecs.register_error("strict", codecs.backslashreplace_errors)
+#   log_path = sys.argv[1]
+#   lr = LogReader(log_path, sort_by_time=True)
+#   for msg in lr:
+#     print(msg)
