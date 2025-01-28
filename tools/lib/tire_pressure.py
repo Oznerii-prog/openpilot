@@ -102,10 +102,14 @@ if __name__ == "__main__":
     data_points = []
     lr = [msg for msg in tqdm(MultiLogIterator(Route(log_path).log_paths())) if msg.which() == "carState"]
     for msg in lr:
-        data_points.append({
-            'vehicle_speed': msg.carState.vEgoCluster,
-            'wheel_speeds': msg.carState.wheelSpeeds.to_dict()
-        })
+        try:
+            d = {
+                'vehicle_speed': msg.carState.vEgoCluster,
+                'wheel_speeds': msg.carState.wheelSpeeds.to_dict()
+            }
+            data_points.append(d)
+        except:
+            pass
 
     deviations = calculate_mean(compare_speeds(data_points, wheel_diameter))
 
